@@ -112,7 +112,7 @@ STATICFILES_DIRS = [
 
 # ตรงนี้คือที่ Django จะ collect ไฟล์ static มารวมกัน (ใช้กับ collectstatic)
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 
 # Default primary key field type
