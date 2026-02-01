@@ -14,13 +14,14 @@ try:
     application = get_wsgi_application()
 
     app = application
-except Exception as e:
+except Exception:
     import traceback
-    traceback.print_exc()
-    # Return a simple error response to verify the handler is running
+    # Capture the full traceback string immediately because 'e' is deleted after except block
+    error_details = traceback.format_exc()
+    
     def error_app(environ, start_response):
         status = '500 Internal Server Error'
-        response_headers = [('Content-type', 'text/plain')]
+        response_headers = [('Content-type', 'text/plain; charset=utf-8')]
         start_response(status, response_headers)
-        return [f"Startup Error: {e}".encode('utf-8')]
+        return [f"Startup Error:\n{error_details}".encode('utf-8')]
     app = error_app
