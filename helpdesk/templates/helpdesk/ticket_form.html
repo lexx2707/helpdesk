@@ -1,0 +1,190 @@
+{% extends "helpdesk/base.html" %}
+{% load tz %}
+{% block title %}{% if ticket %}Edit Ticket{% else %}Create Ticket{% endif %} - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+  <div class="d-flex align-items-center justify-content-between">
+    <h1 class="h4 mb-0">
+      {% if mode == "create" %}
+        📝 แจ้งงาน
+      {% else %}
+        🛠 ตรวจสอบงาน
+      {% endif %}
+    </h1>
+    <a href="{% url 'helpdesk:ticket_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>กลับไปหน้ารายการ
+    </a>
+  </div>
+
+  <div class="card card-quiet ticket-form-card p-4 mt-2">
+
+    <form method="post" enctype="multipart/form-data" novalidate class="ticket-form">
+      {% csrf_token %}
+
+      {% if form.errors %}
+        <div class="alert alert-danger">
+          กรุณาตรวจสอบข้อมูลให้ครบถ้วน:
+          <pre class="mb-0 small text-monospace">{{ form.errors }}</pre>
+        </div>
+      {% endif %}
+
+      {% if form.issue_type %}
+      <div class="mb-3">
+        <label class="form-label">งานที่แจ้ง:</label>
+
+        <select name="issue_type"
+                id="id_issue_type"
+                class="form-select js-issue-select">
+          <option value="">— เลือกงานที่ต้องการแจ้ง —</option>
+
+          {% regroup form.fields.issue_type.queryset by category.name as issue_groups %}
+          {% for g in issue_groups %}
+            <optgroup label="{{ g.grouper }}">
+              {% for it in g.list %}
+                <option value="{{ it.id }}"
+                        data-category="{{ it.category.name|default_if_none:'' }}"
+                        {% if form.data.issue_type == it.id|stringformat:"s" %}
+                          selected
+                        {% elif form.instance.issue_type and form.instance.issue_type.id == it.id %}
+                          selected
+                        {% endif %}>
+                  {{ it.name }}
+                </option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+
+        {% for e in form.issue_type.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        <div class="form-text">เลือกหัวข้อที่ใกล้เคียงที่สุด ระบบจะกำหนดหมวดงานให้อัตโนมัติ</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">หมวดงาน (อัตโนมัติ):</label>
+        <input type="text" id="categoryPreview" class="form-control" value="-" readonly>
+      </div>
+      {% endif %}
+
+      <div class="mb-3">
+        <label class="form-label">เบอร์โทรหรือ Line ID:</label>
+        {{ form.contact }}
+        {% for e in form.contact.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">รายละเอียด:</label>
+        {{ form.description }}
+        {% for e in form.description.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">แนบรูปภาพ (ถ้ามี):</label>
+        <input type="file" name="images" class="form-control" multiple accept="image/*">
+        <div class="form-text">สามารถเลือกได้หลายรูปในการแนบครั้งเดียว</div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        {% if form.status %}
+        <div class="col-md-6">
+          <label class="form-label">สถานะ:</label>
+          {{ form.status }}
+          {% for e in form.status.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        {% endif %}
+
+        {% if form.assignee %}
+        <div class="col-md-6">
+          <label class="form-label">Assignee:</label>
+          {{ form.assignee }}
+          {% for e in form.assignee.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if ticket and form.comment %}
+        <hr class="my-4">
+        <h2 class="h6 mb-2"><i class="bi bi-chat-dots me-1"></i>คอมเมนต์</h2>
+        <div class="mb-2">
+          {{ form.comment }}
+          {% for e in form.comment.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          <div class="form-text">ถ้าพิมพ์คอมเมนต์ ระบบจะบันทึกเป็นคอมเมนต์ใหม่ตอนกด “บันทึก”</div>
+        </div>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-2 mt-3 align-items-center justify-content-between">
+        <button type="submit" class="btn btn-lgx btn-save">
+          <i class="bi bi-check2-square"></i>บันทึก
+        </button>
+
+        {% if perms.helpdesk.change_ticket and ticket and ticket.status not in closed_codes %}
+          <button type="submit"
+                  class="btn btn-lgx btn-close-job"
+                  formmethod="post"
+                  formaction="{% url 'helpdesk:ticket_close' ticket.id %}"
+                  onclick="return confirm('ยืนยันปิดงาน (เสร็จแล้ว)?');">
+            <i class="bi bi-check2-circle me-1"></i>ปิดงาน (เสร็จแล้ว)
+          </button>
+        {% endif %}
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const sel = document.getElementById("id_issue_type");
+  const preview = document.getElementById("categoryPreview");
+  if (!sel || !preview) return;
+
+  function updatePreview(){
+    const opt = sel.options[sel.selectedIndex];
+    const cat = opt ? opt.getAttribute("data-category") : "";
+    preview.value = cat && cat.trim() ? cat : "-";
+  }
+
+  sel.addEventListener("change", updatePreview);
+  updatePreview();
+})();
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    const sel = document.getElementById("id_issue_type");
+    const preview = document.getElementById("categoryPreview");
+    if (!sel || !preview) return;
+
+    function updatePreview(){
+      const opt = sel.options[sel.selectedIndex];
+      const cat = opt ? opt.getAttribute("data-category") : "";
+      preview.value = cat && cat.trim() ? cat : "-";
+    }
+
+    // init select2 ก่อน
+    if ($.fn.select2) {
+      $('.js-issue-select').select2({
+        width: '100%',
+        placeholder: '— เลือกงานที่ต้องการแจ้ง —',
+        allowClear: true
+      });
+
+      // ✅ ผูก event ของ select2
+      $('.js-issue-select').on('select2:select select2:clear', function () {
+        updatePreview();
+      });
+    } else {
+      console.warn("Select2 not loaded");
+    }
+
+    // ✅ เผื่อกรณี select ปกติ
+    sel.addEventListener("change", updatePreview);
+
+    // ✅ โหลดครั้งแรกให้โชว์ทันที
+    updatePreview();
+  });
+</script>
+{% endblock %}
+

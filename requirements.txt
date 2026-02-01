@@ -1,0 +1,4 @@
+Django>=5.0
+django-helpdesk
+whitenoise
+gunicorn

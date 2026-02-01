@@ -1,0 +1,220 @@
+{% extends "helpdesk/base.html" %}
+{% load tz users %}
+{% block title %}Tickets - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="container-lg px-2 fade-in">
+
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3 tickets-page-header">
+    <div class="d-flex align-items-center gap-2">
+      <div class="tickets-page-icon">
+        <i class="bi bi-ticket-perforated-fill"></i>
+      </div>
+      <div>
+        <h1 class="h4 mb-0">Tickets</h1>
+        <div class="tickets-page-subtitle">
+          พบ <strong>{{ total }}</strong> งาน
+          {% if date_from or date_to %}
+            · ช่วงวันที่ {{ date_from|default:"-" }} – {{ date_to|default:"-" }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      {# 🔴 ปุ่ม Export PDF ใช้ค่าที่ filter อยู่ตอนนี้เลย #}
+      <a class="btn btn-danger"
+        href="{% url 'helpdesk:ticket_list_pdf' %}?{{ request.GET.urlencode }}"
+        target="_blank"
+        rel="noopener">
+        <i class="bi bi-filetype-pdf me-1"></i> ส่งออกเป็น PDF
+      </a>
+
+      {% if perms.helpdesk.add_ticket %}
+        <a href="{% url 'helpdesk:ticket_create' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>เปิดงานแจ้งซ่อม
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+
+  <!-- Filters -->
+  <form class="card card-quiet shadow-sm p-3 mb-3" method="get">
+    <div class="row g-2 align-items-center">
+
+      <div class="col-12 col-lg-5">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="ค้นหาเรื่อง/รายละเอียด...">
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-2">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-sliders"></i></span>
+          <select name="status" class="form-select">
+            <option value="">ทุกสถานะ</option>
+            {% for key, label in status_choices %}
+              <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-2">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+          <input type="date" class="form-control" name="date_from" value="{{ date_from|default:'' }}" aria-label="จากวันที่">
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-2">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+          <input type="date" class="form-control" name="date_to" value="{{ date_to|default:'' }}" aria-label="ถึงวันที่">
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-1">
+        <button class="btn btn-outline-secondary w-100" type="submit">
+          ค้นหา
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="card card-quiet shadow-sm ticket-list-card">
+    <div class="table-responsive">
+      <table id="ticketsTable" class="table table-hover align-middle mb-0">
+        <thead class="text-muted">
+         <tr>
+            <th class="text-nowrap">#</th>
+            <th>เรื่อง</th>
+            <th>หมวด</th>
+            <th>สถานะ</th>
+            <th>ผู้แจ้งงาน</th>
+            <th>ผู้รับผิดชอบ</th>
+            <th class="text-nowrap">สร้างเมื่อ</th>
+            <th class="text-nowrap">อัปเดต</th>
+            <th class="text-end">จัดการ</th>   {# เหลือเฉพาะปุ่มแก้ไข #}
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for t in tickets %}
+          <tr class="table-row-link"
+              role="link"
+              tabindex="0"
+              data-href="{% url 'helpdesk:ticket_detail' t.id %}">
+
+            <td>{{ t.id }}</td>
+            <td class="fw-semibold">{{ t.title }}</td>
+
+            <td>{% if t.category %}{{ t.category.name }}{% else %}-{% endif %}</td>
+
+            <td>
+              {% if t.status %}
+                <span class="badge badge-status-{{ t.status|slugify }}">
+                  {{ t.get_status_display|default:t.status }}
+                </span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+
+            <td>{% if t.requester %}{{ t.requester|display_name }}{% else %}-{% endif %}</td>
+            <td>{% if t.assignee %}{{ t.assignee|display_name }}{% else %}-{% endif %}</td>
+
+            <td class="text-nowrap">
+              {% if t.created_at %}
+                {{ t.created_at|localtime|date:"d-m-Y H:i" }}
+              {% else %}-{% endif %}
+            </td>
+
+            <td class="text-nowrap">
+              {% if t.updated_at %}
+                {{ t.updated_at|localtime|date:"d-m-Y H:i" }}
+              {% elif t.created_at %}
+                {{ t.created_at|localtime|date:"d-m-Y H:i" }}
+              {% else %}-{% endif %}
+            </td>
+
+            <td class="text-end">
+              {% with s=t.status %}
+                {% if perms.helpdesk.change_ticket or t.assignee == request.user %}
+                  {% if s not in closed_codes %}
+                    <a class="btn btn-sm btn-primary"
+                       href="{% url 'helpdesk:ticket_update' t.id %}"
+                       title="แก้ไข"
+                       onclick="event.stopPropagation();">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
+                  {% endif %}
+                {% endif %}
+              {% endwith %}
+            </td>
+
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-4">
+              ไม่พบข้อมูล
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ปิด error popup ของ DataTables
+  $.fn.dataTable.ext.errMode = 'none';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.jQuery && $.fn.DataTable) {
+      $('#ticketsTable').DataTable({
+        ordering: true,                 // กด sort ได้
+        order: [[0, 'desc']],           // Default: เรียงตาม # จากมากไปน้อย
+        paging: true,                   // ✅ เปิดแบ่งหน้า
+        pageLength: 50,                 // ✅ แสดง 50 แถวต่อหน้า (ค่าเริ่มต้น)
+        lengthMenu: [
+          [10, 25, 50, 100, -1],       // ตัวเลือกจำนวนแถว
+          ['10', '25', '50', '100', 'ทั้งหมด']
+        ],
+        info: true,                     // แสดง "Showing 1 to ..."
+        searching: false                // ใช้ฟอร์ม filter ด้านบนแทน search ของ DataTables
+      });
+    }
+  });
+
+  // ไปหน้า detail เมื่อคลิกทั้งแถว
+  document.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr.table-row-link');
+    if (!tr) return;
+    if (e.target.closest('a,button,input,select,label,.form-check')) return;
+    if (tr.dataset.href) window.location.href = tr.dataset.href;
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const tr = document.activeElement && document.activeElement.closest
+             ? document.activeElement.closest('tr.table-row-link')
+             : null;
+    if (tr && tr.dataset.href) window.location.href = tr.dataset.href;
+  });
+</script>
+
+<style>
+  .table-row-link { cursor: pointer; }
+  .table-row-link:hover td { background: transparent; }
+</style>
+{% endblock %}

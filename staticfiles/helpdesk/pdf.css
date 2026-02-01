@@ -1,0 +1,29 @@
+@font-face {
+    font-family: 'THSarabunNew';
+    src: url('../fonts/THSarabunNew.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'THSarabunNew';
+    font-weight: bold;
+    src: url('../fonts/THSarabunNew Bold.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'THSarabunNew';
+    font-style: italic;
+    src: url('../fonts/THSarabunNew Italic.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'THSarabunNew';
+    font-weight: bold;
+    font-style: italic;
+    src: url('../fonts/THSarabunNew BoldItalic.ttf') format('truetype');
+}
+
+/* ฟอนต์สำหรับ PDF ทั้งหน้า */
+body {
+    font-family: 'THSarabunNew';
+    font-size: 18px;
+}

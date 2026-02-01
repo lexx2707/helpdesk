@@ -1,0 +1,227 @@
+{% extends "helpdesk/base.html" %}
+{% load tz users %}
+{% block title %}Dashboard - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h3 mb-0">
+      🧭 Dashboard
+    </h1>
+
+    <div class="d-flex gap-2">
+      {% if perms.auth.view_user %}
+        <a href="{% url 'helpdesk:users_list' %}" class="btn btn-outline-primary">
+          <i class="bi bi-people me-1"></i> จัดการผู้ใช้
+        </a>
+      {% endif %}
+      {% if perms.helpdesk.add_ticket %}
+        <a href="{% url 'helpdesk:ticket_create' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>เปิดงานแจ้งซ่อม
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="row g-3 mb-4">
+    <!-- งานของฉัน -->
+    <div class="col-12 col-md-3">
+      <div class="kpi-card">
+        <div class="kpi-label">งานของฉัน (เปิดอยู่)</div>
+        <div class="kpi-value">{{ my_open_count }}</div>
+      </div>
+    </div>
+
+    {% if is_it_staff %}
+      {# IT เห็นกล่อง "มอบหมายให้ฉัน" แยกต่างหาก #}
+      <div class="col-12 col-md-3">
+        <div class="kpi-card">
+          <div class="kpi-label">มอบหมายให้ฉัน</div>
+          <div class="kpi-value">{{ assigned_to_me }}</div>
+        </div>
+      </div>
+
+      {# By Status กินพื้นที่ 6 ช่อง #}
+      <div class="col-12 col-md-6">
+    {% else %}
+      {# ผู้ใช้ทั่วไป: By Status กินพื้นที่ที่เหลือทั้งหมด #}
+      <div class="col-12 col-md-9">
+    {% endif %}
+        <div class="card card-quiet p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="fw-bold">สถานะงาน</div>
+          </div>
+
+          <div class="mt-2 d-flex flex-wrap gap-2">
+            {% for row in by_status %}
+              {% with st=row.status|default:"unknown" %}
+                <span class="badge badge-status-{{ st|slugify }} px-3 py-2 rounded-pill">
+                  {{ row.label|default:st }}: {{ row.c }}
+                </span>
+              {% endwith %}
+            {% empty %}
+              <span class="text-muted">No data</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+  </div>
+
+  {# ===== Filters สำหรับรายการล่าสุด (ใช้ context จาก views.dashboard ใหม่) ===== #}
+  <form class="card card-quiet p-3 mb-3" method="get">
+    <div class="row g-2 align-items-center">
+
+      <div class="col-12 col-md-4">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text"
+                 class="form-control"
+                 name="q"
+                 value="{{ q|default:'' }}"
+                 placeholder="ค้นหาเรื่อง/รายละเอียด...">
+        </div>
+      </div>
+
+      <div class="col-6 col-md-3">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-sliders"></i></span>
+          <select name="status" class="form-select">
+            <option value="">ทุกสถานะ</option>
+            {% for key, label in status_choices %}
+              <option value="{{ key }}" {% if status == key %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+          <input type="date"
+                 class="form-control"
+                 name="date_from"
+                 value="{{ date_from|default:'' }}"
+                 aria-label="จากวันที่">
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-calendar3"></i></span>
+          <input type="date"
+                 class="form-control"
+                 name="date_to"
+                 value="{{ date_to|default:'' }}"
+                 aria-label="ถึงวันที่">
+        </div>
+      </div>
+
+      <div class="col-6 col-md-1">
+        <button class="btn btn-outline-secondary w-100" type="submit">
+          ค้นหา
+        </button>
+      </div>
+
+    </div>
+  </form>
+
+  <!-- Recent table -->
+  <div class="card card-quiet p-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="fw-bold">
+        รายการล่าสุด
+        {% if q or status or date_from or date_to %}
+          <small class="text-muted">(ตามตัวกรองปัจจุบัน)</small>
+        {% endif %}
+      </div>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'helpdesk:ticket_list' %}">
+        <i class="bi bi-list-task me-1"></i>ดูทั้งหมด
+      </a>
+    </div>
+
+    <div class="table-responsive mt-2">
+      <table id="recentTable" class="table align-middle">
+        <thead>
+          <tr class="text-muted">
+            <th scope="col">#</th>
+            <th scope="col">เรื่อง</th>
+            <th scope="col">หมวด</th>
+            <th scope="col">สถานะ</th>
+            <th scope="col">ผู้แจ้งงาน</th>
+            <th scope="col">ผู้รับผิดชอบ</th>
+            <th scope="col">อัปเดต</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in recent %}
+            <tr class="table-row-link" role="link" tabindex="0"
+                data-href="{% url 'helpdesk:ticket_detail' t.id %}">
+              <td>{{ t.id }}</td>
+              <td class="fw-semibold">{{ t.title }}</td>
+              <td>{% if t.category %}{{ t.category.name }}{% else %}-{% endif %}</td>
+              <td>
+                {% if t.status %}
+                  <span class="badge badge-status-{{ t.status|slugify }}">
+                    {{ t.get_status_display|default:t.status }}
+                  </span>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td>{% if t.requester %}{{ t.requester|display_name }}{% else %}-{% endif %}</td>
+              <td>{% if t.assignee %}{{ t.assignee|display_name }}{% else %}-{% endif %}</td>
+              <td>
+                {% if t.updated_at %}{{ t.updated_at|localtime|date:"d-m-Y H:i" }}
+                {% elif t.created_at %}{{ t.created_at|localtime|date:"d-m-Y H:i" }}
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">ยังไม่มีรายการ</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $.fn.dataTable.ext.errMode = 'none';
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.jQuery && $.fn.DataTable) {
+      $('#recentTable').DataTable({
+        ordering: true,
+        order: [[0, 'desc']],   // เรียง id จากมากไปน้อย
+        paging: true,           // ✅ เปิดแบ่งหน้า
+        pageLength: 20,         // แสดง 20 แถวต่อหน้า
+        lengthChange: false,    // ซ่อน dropdown เลือกจำนวนแถว (ให้ fix ที่ 20)
+        info: true,             // จะแสดง "Showing 1 to 20 of ..."
+        searching: false        // ใช้ฟิลเตอร์ด้านบนแทน search ของ DataTables
+      });
+    }
+  });
+
+  // ไปหน้า detail เมื่อคลิกทั้งแถว
+  document.addEventListener('click', (e) => {
+    const tr = e.target.closest('.table-row-link');
+    if (!tr) return;
+    if (e.target.closest('a,button,input,select,label,.form-check')) return;
+    if (tr.dataset.href) window.location = tr.dataset.href;
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const tr = document.activeElement?.closest?.('.table-row-link');
+    if (tr?.dataset.href) window.location = tr.dataset.href;
+  });
+</script>
+{% endblock %}

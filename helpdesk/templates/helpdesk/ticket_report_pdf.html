@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* ตั้งกระดาษแนวนอน */
+        @page {
+        size: A4 landscape;
+        margin: 15mm;
+        }
+        /* ใช้ชื่อฟอนต์ THSarabun ที่ register ใน views.py */
+        body {
+            font-family: "THSarabun", "DejaVu Sans", sans-serif;
+            font-size: 14pt;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            font-size: 16pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #444;
+            padding: 4px 6px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #d9edf7;
+        }
+
+        .total-row {
+            background-color: #e2f0d9;
+            font-weight: bold;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<h1>รายงานสรุปใบงานฝ่ายเทคโนโลยีสารสนเทศ</h1>
+<h2>ปี {{ year }}</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>ประเภทงาน</th>
+            <th>ม.ค.</th>
+            <th>ก.พ.</th>
+            <th>มี.ค.</th>
+            <th>เม.ย.</th>
+            <th>พ.ค.</th>
+            <th>มิ.ย.</th>
+            <th>ก.ค.</th>
+            <th>ส.ค.</th>
+            <th>ก.ย.</th>
+            <th>ต.ค.</th>
+            <th>พ.ย.</th>
+            <th>ธ.ค.</th>
+            <th>รวมทั้งหมด</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td class="text-left">{{ row.category.name }}</td>
+            {% for c in row.monthly %}
+                <td>{{ c }}</td>
+            {% endfor %}
+            <td class="total-row">{{ row.row_total }}</td>
+        </tr>
+        {% endfor %}
+
+        <tr class="total-row">
+            <td class="text-left">รวม</td>
+            {% for c in month_totals %}
+                <td>{{ c }}</td>
+            {% endfor %}
+            <td>{{ grand_total }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<p class="right" style="margin-top: 20px;">
+    ออกรายงานเมื่อ: {% now "d/m/Y H:i" %}
+</p>
+
+</body>
+</html>

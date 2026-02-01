@@ -1,0 +1,194 @@
+{% load static %}
+{% now "Y" as current_year %}
+<!doctype html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Helpdesk{% endblock %}</title>
+
+  <!-- Bootstrap + Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <!-- DataTables + Bootstrap5 -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.0.7/css/dataTables.bootstrap5.min.css">
+
+  <!-- ✅ Select2 -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+  <!-- Theme -->
+  <link rel="stylesheet" href="{% static 'helpdesk/app.css' %}?v=1">
+  <style>
+    /* บังคับให้ select แบบ .form-select แสดงลูกศรของ Bootstrap แน่นอน */
+    .form-select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: var(--bs-form-select-bg-img);
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      background-size: 16px 12px;
+      padding-right: 2.25rem;
+      /* เผื่อที่ให้ลูกศร */
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center" href="{% url 'helpdesk:dashboard' %}">
+        <i class="bi bi-headset me-2"></i>Helpdesk
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          {% with u=request.resolver_match.url_name|default:'' %}
+
+            <li class="nav-item">
+              <a class="nav-link {% if u == 'dashboard' %}active{% endif %}"
+                {% if u == 'dashboard' %}aria-current="page"{% endif %}
+                href="{% url 'helpdesk:dashboard' %}">
+                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+              </a>
+            </li>
+
+            <li class="nav-item">
+              <a class="nav-link {% if u == 'ticket_list' or u == 'ticket_detail' or u == 'ticket_update' %}active{% endif %}"
+                {% if u == 'ticket_list' or u == 'ticket_detail' or u == 'ticket_update' %}aria-current="page"{% endif %}
+                href="{% url 'helpdesk:ticket_list' %}">
+                <i class="bi bi-list-task me-1"></i>Tickets
+              </a>
+            </li>
+
+            {# เมนูรายงานทั้งปี (เฉพาะ IT / คนที่มีสิทธิ์ change_ticket) #}
+            {% if perms.helpdesk.change_ticket %}
+              <li class="nav-item">
+                <a class="nav-link {% if u == 'ticket_year_summary_page' %}active{% endif %}"
+                  {% if u == 'ticket_year_summary_page' %}aria-current="page"{% endif %}
+                  href="{% url 'helpdesk:ticket_year_summary_page' current_year %}">
+                  <i class="bi bi-graph-up me-1"></i>รายงานทั้งปี
+                </a>
+              </li>
+            {% endif %}
+
+            {# เมนูจัดการผู้ใช้ (เฉพาะคนที่มีสิทธิ์ดู user) #}
+            {% if perms.auth.view_user %}
+              <li class="nav-item">
+                <a class="nav-link {% if u == 'users_list' or u == 'users_create' or u == 'users_edit' %}active{% endif %}"
+                  {% if u == 'users_list' or u == 'users_create' or u == 'users_edit' %}aria-current="page"{% endif %}
+                  href="{% url 'helpdesk:users_list' %}">
+                  <i class="bi bi-people me-1"></i>จัดการผู้ใช้
+                </a>
+              </li>
+            {% endif %}
+
+            {# เมนู New Ticket (เฉพาะคนที่มีสิทธิ์ add_ticket) #}
+            {% if perms.helpdesk.add_ticket %}
+              <li class="nav-item">
+                <a class="nav-link {% if u == 'ticket_create' %}active{% endif %}"
+                  {% if u == 'ticket_create' %}aria-current="page"{% endif %}
+                  href="{% url 'helpdesk:ticket_create' %}">
+                  <i class="bi bi-plus-circle me-1"></i>New
+                </a>
+              </li>
+            {% endif %}
+
+          {% endwith %}
+        </ul>
+
+
+        <div class="ms-auto d-flex align-items-center gap-2">
+          {% if request.user.is_authenticated %}
+          <div class="dropdown">
+            <button class="btn btn-userchip dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <i class="bi bi-person-circle"></i>
+
+              <span class="text-truncate" style="max-width: 180px;">
+                {% firstof request.user.get_full_name request.user.username %}
+              </span>
+
+              {% if request.user.is_superuser or perms.helpdesk.change_ticket %}
+                <span class="badge rounded-pill bg-primary">IT</span>
+              {% else %}
+                <span class="badge rounded-pill bg-secondary">User</span>
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+              <li class="dropdown-header small text-muted">
+                ลงชื่อเข้าใช้แล้ว
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'helpdesk:ticket_list' %}?mine=1">
+                  <i class="bi bi-person-lines-fill me-2"></i>งานของฉัน
+                </a>
+              </li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li class="px-3 pb-2">
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-danger w-100">
+                    <i class="bi bi-box-arrow-right me-1"></i>Logout
+                  </button>
+                </form>
+              </li>
+            </ul>
+          </div>
+          {% else %}
+          <a class="btn btn-outline-light btn-sm" href="{% url 'login' %}?next={{ request.path|urlencode }}">Login</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container my-4">
+    {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+    <footer class="text-secondary small mt-5 py-4">
+      ⚡ IT Helpdesk
+      {% if IT_CONTACT %}
+        <span class="ms-2">| ติดต่อ IT: {{ IT_CONTACT }}</span>
+      {% endif %}
+    </footer>
+
+  </main>
+
+  <!-- jQuery สำหรับ DataTables -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- ✅ Select2 -->
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Script หลักของระบบ -->
+  <script src="{% static 'js/app.js' %}?v=1"></script>
+
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/2.0.7/js/dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/2.0.7/js/dataTables.bootstrap5.min.js"></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+
+</html>

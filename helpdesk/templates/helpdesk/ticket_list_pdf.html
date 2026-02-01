@@ -1,0 +1,118 @@
+{% load tz users %}
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>รายงานสรุปรายการใบงาน</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm;
+    }
+    body {
+      font-family: "THSarabun", "DejaVu Sans", sans-serif;
+      font-size: 14pt;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 5mm;
+    }
+    .meta {
+      font-size: 11pt;
+      margin-bottom: 5mm;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11pt;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 3px 4px;
+      vertical-align: top;
+    }
+    th {
+      background: #eeeeee;
+      text-align: center;
+    }
+    .text-center {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>รายงานรายการใบงาน</h1>
+
+  <div class="meta">
+    <strong>จำนวนทั้งหมด:</strong> {{ total }} ใบงาน<br>
+    {% if date_from or date_to %}
+      <strong>ช่วงวันที่:</strong>
+      {{ date_from|default:"-" }} ถึง {{ date_to|default:"-" }}<br>
+    {% endif %}
+    {% if status %}
+      <strong>สถานะ:</strong> {{ status }}<br>
+    {% endif %}
+    {% if q %}
+      <strong>คำค้นหา:</strong> "{{ q }}"<br>
+    {% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 6%">#</th>
+        <th style="width: 22%">เรื่อง</th>
+        <th style="width: 16%">ผู้แจ้ง</th>
+        <th style="width: 16%">ผู้รับผิดชอบ</th>
+        <th style="width: 12%">สถานะ</th>
+        <th style="width: 14%">วันที่สร้าง</th>
+        <th style="width: 14%">หมวด</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tickets %}
+      <tr>
+        <td class="text-center">{{ t.id }}</td>
+        <td>{{ t.title }}</td>
+        <td>
+          {% if t.requester %}
+            {{ t.requester|display_name }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>
+          {% if t.assignee %}
+            {{ t.assignee|display_name }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td class="text-center">
+          {% if t.status %}
+            {{ t.get_status_display|default:t.status }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td class="text-center">
+          {% if t.created_at %}
+            {{ t.created_at|localtime|date:"d-m-Y H:i" }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td>
+          {% if t.category %}{{ t.category.name }}{% else %}-{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="text-center">ไม่มีรายการตามตัวกรองที่เลือก</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

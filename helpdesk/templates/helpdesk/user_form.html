@@ -1,0 +1,70 @@
+{% extends "helpdesk/base.html" %}
+{% load users %}
+{% block title %}{% if mode == "create" %}เพิ่มผู้ใช้{% else %}แก้ไขผู้ใช้{% endif %} - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 mb-0">
+      {% if mode == "create" %}
+        เพิ่มผู้ใช้
+      {% else %}
+        แก้ไขผู้ใช้
+      {% endif %}
+    </h1>
+    <a href="{% url 'helpdesk:users_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> กลับ
+    </a>
+  </div>
+
+  <!-- Form card -->
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-6">
+      <div class="card card-quiet shadow-sm p-4 user-edit-card">
+        <form method="post" novalidate class="user-edit-form">
+          {% csrf_token %}
+
+          {% for field in form %}
+            <div class="mb-3">
+
+              {# ถ้าเป็น checkbox (เช่น is_active, is_staff) ให้ใช้สไตล์ form-switch #}
+              {% if field.field.widget.input_type == "checkbox" %}
+                <div class="form-check form-switch">
+                  {{ field|add_class:"form-check-input" }}
+                  <label class="form-check-label ms-2" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                  </label>
+                </div>
+
+              {# ฟิลด์ปกติ: ใช้ form-control #}
+              {% else %}
+                <label for="{{ field.id_for_label }}" class="form-label">
+                  {{ field.label }}
+                </label>
+                {{ field|add_class:"form-control" }}
+              {% endif %}
+
+    {% if field.help_text %}
+      <div class="form-text small text-muted">
+        {{ field.help_text }}
+      </div>
+    {% endif %}
+
+    {% for e in field.errors %}
+      <div class="text-danger small">{{ e }}</div>
+    {% endfor %}
+  </div>
+{% endfor %}
+
+          <div class="d-flex justify-content-start mt-2">
+            <button class="btn btn-primary">
+              <i class="bi bi-save me-1"></i> บันทึก
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

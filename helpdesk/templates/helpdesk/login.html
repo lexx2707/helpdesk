@@ -1,0 +1,110 @@
+{% extends "helpdesk/base_auth.html" %}
+{% block title %}Login - Helpdesk{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ===== Login page polish ===== */
+  .auth-wrap{min-height:65vh; display:grid; place-items:center;}
+  .auth-card{
+    width:100%; max-width:460px; border:0; border-radius:1rem;
+    background:#fff; padding:2rem;
+    box-shadow: 0 12px 28px rgba(16,24,40,.08), 0 2px 8px rgba(16,24,40,.06);
+  }
+  .auth-badge{
+    width:64px; height:64px; border-radius:50%;
+    display:grid; place-items:center; margin:-52px auto 1rem;
+    color:#fff; font-size:1.5rem;
+    background:linear-gradient(135deg,#2d6bff 0%,#3ecbff 100%);
+    box-shadow:0 8px 24px rgba(45,107,255,.35);
+  }
+  .input-group-text{background:#f6f8ff;}
+  .auth-title{font-weight:700;}
+  .btn-auth{padding:.8rem 1rem; border-radius:.8rem; font-weight:600;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-badge"><i class="bi bi-person-badge"></i></div>
+      <h1 class="auth-title mb-1">เข้าสู่ระบบ</h1>
+      <p class="text-muted mb-0">ลงชื่อเข้าใช้เพื่อจัดการใบงานของคุณ</p>
+    </div>
+
+    <!-- BODY -->
+    <div class="auth-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <!-- username -->
+        <div class="mb-3">
+          <label class="form-label">ชื่อผู้ใช้</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text"
+                   name="{{ form.username.name }}"
+                   id="id_username"
+                   class="form-control"
+                   value="{{ form.username.value|default_if_none:'' }}"
+                   autocomplete="username"
+                   required>
+          </div>
+        </div>
+
+        <!-- password -->
+        <div class="mb-3">
+          <label class="form-label">รหัสผ่าน</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password"
+                   name="{{ form.password.name }}"
+                   id="id_password"
+                   class="form-control"
+                   autocomplete="current-password"
+                   required>
+            <button class="btn btn-outline-secondary" type="button" id="togglePwd">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="d-grid mt-3">
+          <button class="btn btn-primary btn-auth">
+            <i class="bi bi-box-arrow-in-right me-1"></i> เข้าสู่ระบบ
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // โฟกัสช่องชื่อผู้ใช้ทันที
+  (function(){
+    const u = document.getElementById('id_username');
+    if (u) u.focus();
+
+    // ปุ่มแสดง/ซ่อนรหัสผ่าน
+    const btn = document.getElementById('togglePwd');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      const pw = document.getElementById('id_password');
+      if (!pw) return;
+      const isPwd = pw.type === 'password';
+      pw.type = isPwd ? 'text' : 'password';
+      const icon = btn.querySelector('i');
+      icon.classList.toggle('bi-eye');
+      icon.classList.toggle('bi-eye-slash');
+      pw.focus();
+    });
+  })();
+</script>
+{% endblock %}
