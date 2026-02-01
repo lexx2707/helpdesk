@@ -2,3 +2,8 @@ Django>=5.0
 django-helpdesk
 whitenoise
 gunicorn
+xhtml2pdf
+Pillow
+markdown
+python-dateutil
+pytz
