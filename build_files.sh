@@ -1,16 +1,24 @@
+#!/bin/bash
 set -e
+
+# Change to the directory where this script is located
+cd "$(dirname "$0")"
+
 echo "BUILD START"
-echo "Current directory: $(pwd)"
-echo "Directory entries:"
+echo "Working directory: $(pwd)"
+echo "Files in current directory:"
 ls -la
 
-# Get script directory to safely locate requirements.txt
-SCRIPT_DIR=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-echo "Script directory: $SCRIPT_DIR"
+echo "Installing Python packages..."
+python3 -m pip install -r requirements.txt --break-system-packages
 
-python3 -m pip install -r "$SCRIPT_DIR/requirements.txt" --break-system-packages
+echo "Installed packages:"
 python3 -m pip list
+
+echo "Collecting static files..."
 python3 manage.py collectstatic --noinput --clear
-echo "Check output directory..."
-ls -la
+
+echo "Output directory contents:"
+ls -la staticfiles/
+
 echo "BUILD END"
