@@ -12,10 +12,19 @@ from django.utils import timezone
 from django.utils.timezone import make_aware
 from django.template.loader import get_template
 from django.conf import settings
-from xhtml2pdf import pisa
-from xhtml2pdf.default import DEFAULT_FONT
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+# PDF dependencies are optional - only needed for PDF export features
+try:
+    from xhtml2pdf import pisa
+    from xhtml2pdf.default import DEFAULT_FONT
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+    pisa = None
+    DEFAULT_FONT = None
+    pdfmetrics = None
+    TTFont = None
 from .models import Ticket, TicketComment, Category, TicketImage, TicketAttachment
 
 import os
@@ -254,6 +263,14 @@ def ticket_list_pdf(request):
     """
     สร้าง PDF รายการ Ticket ตาม filter เดียวกับหน้า /helpdesk/tickets/
     """
+    # Check if PDF libraries are available
+    if not PDF_AVAILABLE:
+        return HttpResponse(
+            "PDF export is not available. Missing required libraries (xhtml2pdf).",
+            status=503,
+            content_type="text/plain"
+        )
+    
     user = request.user
 
     # ขอบเขตข้อมูลที่ดูได้เหมือนใน ticket_list
